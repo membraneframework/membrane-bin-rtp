@@ -23,7 +23,12 @@ defmodule MembraneBinRtp.MixProject do
     [
       # {:dep_from_hexpm, "~> 0.3.0"},
       # {:dep_from_git, git: "https://github.com/elixir-lang/my_dep.git", tag: "0.1.0"},
-      {:membrane_core, "~> 0.2.0"},
+      {:membrane_core, path: "~/bins_merge/bins_merge", override: true},
+      {:membrane_element_rtp, "~> 0.2.1"},
+      {:membrane_element_rtp_jitter_buffer, path: "~/membrane-element-rtp-jitter-buffer"},
+      {:membrane_element_rtp_h264, git: "https://github.com/membraneframework/membrane-element-rtp-h264", only: [:test]},
+      {:membrane_element_ffmpeg_h264, "~> 0.1", only: [:test]},
+      {:membrane_element_pcap, path: "/Users/dominikstanaszek/membrane-element-pcap", only: [:test]}
     ]
   end
 end
