@@ -1,4 +1,4 @@
-defmodule Membrane.Test.RTP do
+defmodule Membrane.Test.RTPSession do
   use ExUnit.Case
   alias Membrane.Testing
 
@@ -26,7 +26,6 @@ defmodule Membrane.Test.RTP do
     @impl true
     def handle_end_of_stream(_pad, _ctx, %{counter: c} = state),
       do: {{:ok, notify: {:frame_count, c}}, state}
-
   end
 
   test "" do
@@ -35,11 +34,12 @@ defmodule Membrane.Test.RTP do
     opts = %Testing.Pipeline.Options{
       elements: [
         pcap: %Membrane.Element.Pcap.Source{path: "test/demo.pcap"},
-        rtp: %Bin.RTP{depayloader: H264.Depayloader},
+        rtp: %Bin.RTPSession{depayloader: H264.Depayloader},
         video_parser: %Membrane.Element.FFmpeg.H264.Parser{framerate: {30, 1}},
         frame_counter: FrameCounter
       ]
     }
+
     {:ok, pipeline} = Testing.Pipeline.start_link(opts)
 
     Testing.Pipeline.play(pipeline)
@@ -47,5 +47,4 @@ defmodule Membrane.Test.RTP do
     assert_pipeline_notified(pipeline, :frame_counter, {:frame_count, count})
     assert count == frames_count
   end
-
 end

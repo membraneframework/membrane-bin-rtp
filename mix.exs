@@ -26,9 +26,11 @@ defmodule MembraneBinRtp.MixProject do
       {:membrane_core, path: "~/bins_merge/bins_merge", override: true},
       {:membrane_element_rtp, "~> 0.2.1"},
       {:membrane_element_rtp_jitter_buffer, path: "~/membrane-element-rtp-jitter-buffer"},
-      {:membrane_element_rtp_h264, git: "https://github.com/membraneframework/membrane-element-rtp-h264", only: [:test]},
+      {:membrane_element_rtp_h264,
+       git: "https://github.com/membraneframework/membrane-element-rtp-h264", only: [:test]},
       {:membrane_element_ffmpeg_h264, "~> 0.1", only: [:test]},
-      {:membrane_element_pcap, path: "/Users/dominikstanaszek/membrane-element-pcap", only: [:test]}
+      {:membrane_element_pcap,
+       path: "/Users/dominikstanaszek/membrane-element-pcap", only: [:test]}
     ]
   end
 end

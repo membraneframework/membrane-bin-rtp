@@ -1,4 +1,4 @@
-defmodule Membrane.Bin.RTP do
+defmodule Membrane.Bin.RTPSession do
   use Membrane.Bin
 
   alias Membrane.Element.RTP.Parser
@@ -32,5 +32,4 @@ defmodule Membrane.Bin.RTP do
 
     {{:ok, spec: spec}, %{}}
   end
-
 end
