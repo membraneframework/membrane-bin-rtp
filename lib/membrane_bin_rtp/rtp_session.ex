@@ -12,18 +12,15 @@ defmodule Membrane.Bin.RTPSession do
 
   @impl true
   def handle_init(opts) do
+    IO.puts "RTPSession pid: #{inspect self}, depayloader: #{inspect opts.depayloader}"
     children = [
-      parser: Parser,
       jitter_buffer: %Membrane.Element.RTP.JitterBuffer{slot_count: 10},
       depayloader: opts.depayloader
     ]
 
-    links = %{
-      {Bin.itself(), :input} => {:parser, :input, []},
-      {:parser, :output} => {:jitter_buffer, :input, []},
-      {:jitter_buffer, :output} => {:depayloader, :input},
-      {:depayloader, :output} => {Bin.itself(), :output, []}
-    }
+    links = [
+      link_bin_input() |> to(:jitter_buffer) |> to(:depayloader) |> to_bin_output()
+    ]
 
     spec = %ParentSpec{
       children: children,
