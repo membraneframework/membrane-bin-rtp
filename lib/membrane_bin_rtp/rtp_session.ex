@@ -12,7 +12,6 @@ defmodule Membrane.Bin.RTPSession do
 
   @impl true
   def handle_init(opts) do
-    IO.puts "RTPSession pid: #{inspect self}, depayloader: #{inspect opts.depayloader}"
     children = [
       jitter_buffer: %Membrane.Element.RTP.JitterBuffer{slot_count: 10},
       depayloader: opts.depayloader

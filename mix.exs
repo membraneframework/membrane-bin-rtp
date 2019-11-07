@@ -31,9 +31,10 @@ defmodule MembraneBinRtp.MixProject do
        git: "https://github.com/membraneframework/membrane-element-rtp-h264", only: [:test]},
       {:membrane_element_ffmpeg_h264, "~> 0.1", only: [:test]},
       {:membrane_element_pcap,
-        path: "/Users/dominikstanaszek/membrane-element-pcap", only: [:test]},
+       path: "/Users/dominikstanaszek/membrane-element-pcap", only: [:test]},
       {:membrane_element_udp, github: "membraneframework/membrane-element-udp"},
-      {:membrane_element_rtp_mpeguadio, github: "membraneframework/membrane-element-rtp-mpegaudio"}
+      {:membrane_element_rtp_mpeguadio,
+       github: "membraneframework/membrane-element-rtp-mpegaudio"}
     ]
   end
 end

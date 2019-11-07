@@ -6,7 +6,6 @@ defmodule Membrane.Test.RTP do
 
   import Membrane.Testing.Assertions
 
-
   defmodule Inspect do
     use Membrane.Filter
 
@@ -16,6 +15,7 @@ defmodule Membrane.Test.RTP do
 
     @impl true
     def handle_process(pad, buffer, _ctx, state) do
+      # IO.inspect Membrane.Element.RTP.PacketParser.parse_packet(buffer.payload)
       {{:ok, buffer: {:output, buffer}}, state}
     end
 
@@ -23,14 +23,12 @@ defmodule Membrane.Test.RTP do
     def handle_demand(pad, size, unit, _ctx, state) do
       {{:ok, demand: {:input, size}}, state}
     end
-
   end
 
   test "" do
-
     opts = %Testing.Pipeline.Options{
       elements: [
-        pcap: %Membrane.Element.Pcap.Source{path: "demo_audio_video_rtp3.pcap"},
+        pcap: %Membrane.Element.Pcap.Source{path: "test/demo_rtp.pcap"},
         inspect: Inspect,
         rtp: Bin.RTP,
         dumper: Testing.Sink
@@ -43,5 +41,4 @@ defmodule Membrane.Test.RTP do
 
     assert_sink_buffer(pipeline, :dumper, _)
   end
-
 end
