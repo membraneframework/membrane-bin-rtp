@@ -11,6 +11,8 @@ defmodule Membrane.Test.RTP do
   @audio_stream %{ssrc: 439_017_412, frames_n: 20}
   @video_stream %{ssrc: 670_572_639, frames_n: 287}
 
+  @fmt_mapping %{96 => "H264", 127 => "MPA"}
+
   defmodule TestSink do
     use Membrane.Sink
 
@@ -37,11 +39,11 @@ defmodule Membrane.Test.RTP do
     use Membrane.Pipeline
 
     @impl true
-    def handle_init(%{test_pid: test_pid, pcap_file: pcap_file}) do
+    def handle_init(%{test_pid: test_pid, pcap_file: pcap_file, fmt_mapping: fmt_mapping}) do
       spec = %ParentSpec{
         children: [
           pcap: %Membrane.Element.Pcap.Source{path: pcap_file},
-          rtp: Bin.RTP
+          rtp: %Bin.RTP{fmt_mapping: fmt_mapping}
         ],
         links: [link(:pcap) |> to(:rtp)]
       }
@@ -69,7 +71,12 @@ defmodule Membrane.Test.RTP do
   end
 
   test "RTP streams passes through RTP bin properly" do
-    {:ok, pipeline} = DynamicPipeline.start_link(%{test_pid: self(), pcap_file: @pcap_file})
+    {:ok, pipeline} =
+      DynamicPipeline.start_link(%{
+        test_pid: self(),
+        pcap_file: @pcap_file,
+        fmt_mapping: @fmt_mapping
+      })
 
     Testing.Pipeline.play(pipeline)
 

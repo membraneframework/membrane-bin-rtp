@@ -5,6 +5,8 @@ defmodule Membrane.Bin.RTP do
   alias Membrane.ParentSpec
   alias Membrane.Element.RTP
 
+  def_options fmt_mapping: [type: :map, default: %{}]
+
   def_input_pad :input, demand_unit: :buffers, caps: :any, availability: :on_request
 
   def_output_pad :output, caps: :any, demand_unit: :buffers, availability: :on_request
@@ -14,8 +16,8 @@ defmodule Membrane.Bin.RTP do
   end
 
   @impl true
-  def handle_init(_) do
-    children = [ssrc_router: Bin.SSRCRouter]
+  def handle_init(%{fmt_mapping: fmt_map}) do
+    children = [ssrc_router: %Bin.SSRCRouter{fmt_mapping: fmt_map}]
     links = []
 
     spec = %ParentSpec{children: children, links: links}

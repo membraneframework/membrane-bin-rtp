@@ -1,23 +1,22 @@
 defmodule Membrane.Bin.SSRCRouter do
   use Membrane.Filter
 
+  def_options fmt_mapping: [type: :map]
+
   def_input_pad :input, demand_unit: :buffers, caps: :any, availability: :on_request
 
   def_output_pad :output, caps: :any, availability: :on_request, options: [ssrc: [type: :integer]]
-
-  # TODO inject somehow
-  @fmt_mapping %{96 => "H264", 127 => "MPA"}
 
   defmodule PadPair do
     defstruct input_pad: :not_assigned, dest_pad: :not_assigned
   end
 
   defmodule State do
-    defstruct pads: %{}, waiting_for_linking: %{}
+    defstruct pads: %{}, waiting_for_linking: %{}, fmt_mapping: %{}
   end
 
   @impl true
-  def handle_init(_), do: {:ok, %State{}}
+  def handle_init(%{fmt_mapping: fmt_map}), do: {:ok, %State{fmt_mapping: fmt_map}}
 
   @impl true
   def handle_pad_added(Pad.ref(:output, _id) = pad, ctx, state) do
@@ -29,7 +28,7 @@ defmodule Membrane.Bin.SSRCRouter do
 
     {buffers_to_resend, new_lb} = lb |> Map.pop(ssrc)
 
-    new_state = %State{pads: new_pads, waiting_for_linking: new_lb}
+    new_state = %State{state | pads: new_pads, waiting_for_linking: new_lb}
 
     actions = [{:buffer, {pad, Enum.reverse(buffers_to_resend)}}]
 
@@ -69,7 +68,7 @@ defmodule Membrane.Bin.SSRCRouter do
 
     cond do
       new_stream?(ssrc, state.pads) ->
-        {:ok, payload_type} = get_payload_type(buffer, @fmt_mapping)
+        {:ok, payload_type} = get_payload_type(buffer, state.fmt_mapping)
 
         new_pads = state.pads |> Map.put(ssrc, %PadPair{input_pad: pad})
 
