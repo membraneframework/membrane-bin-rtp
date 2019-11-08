@@ -8,6 +8,9 @@ defmodule Membrane.Test.RTPSession do
 
   import Testing.Assertions
 
+  @pcap_file "test/demo.pcap"
+  @frames_count 1038
+
   defmodule FrameCounter do
     use Membrane.Sink
 
@@ -29,12 +32,10 @@ defmodule Membrane.Test.RTPSession do
       do: {{:ok, notify: {:frame_count, c}}, state}
   end
 
-  test "" do
-    frames_count = 1038
-
+  test "RTP stream passes through bin properly" do
     opts = %Testing.Pipeline.Options{
       elements: [
-        pcap: %Membrane.Element.Pcap.Source{path: "test/demo.pcap"},
+        pcap: %Membrane.Element.Pcap.Source{path: @pcap_file},
         rtp_parser: RTP.Parser,
         rtp: %Bin.RTPSession{depayloader: H264.Depayloader},
         video_parser: %Membrane.Element.FFmpeg.H264.Parser{framerate: {30, 1}},
@@ -47,6 +48,6 @@ defmodule Membrane.Test.RTPSession do
     Testing.Pipeline.play(pipeline)
 
     assert_pipeline_notified(pipeline, :frame_counter, {:frame_count, count})
-    assert count == frames_count
+    assert count == @frames_count
   end
 end

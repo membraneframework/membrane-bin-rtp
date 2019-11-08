@@ -4,109 +4,59 @@ defmodule Membrane.Test.RTP do
   alias Membrane.Bin
   alias Membrane.Testing
 
-  import Membrane.Testing.Assertions
+  @timeout 200
 
-  defmodule Inspect do
-    use Membrane.Filter
+  @pcap_file "test/demo_rtp.pcap"
+
+  @audio_stream %{ssrc: 439_017_412, frames_n: 20}
+  @video_stream %{ssrc: 670_572_639, frames_n: 287}
+
+  defmodule TestSink do
+    use Membrane.Sink
 
     def_input_pad :input, demand_unit: :buffers, caps: :any
 
-    def_output_pad :output, caps: :any
+    def_options test_pid: [type: :pid], name: [type: :any]
 
     @impl true
-    def handle_init(_) do
-      {:ok, %{}}
-    end
+    def handle_init(state), do: {:ok, state}
 
-    defp update_seq(ssrc, seq, state) do
-      case Map.get(state, ssrc) do
-        %{min: mininimum, max: maximum} ->
-          Map.put(state, ssrc, %{min: min(mininimum, seq), max: max(maximum, seq)})
-
-        nil ->
-          state
-          |> Map.put(ssrc, %{min: seq, max: seq})
-      end
+    @impl true
+    def handle_prepared_to_playing(_ctx, state) do
+      {{:ok, demand: :input}, state}
     end
 
     @impl true
-    def handle_process(pad, buffer, _ctx, state) do
-      # {:ok, packet} = Membrane.Element.RTP.PacketParser.parse_packet(buffer.payload)
-
-      # seq = packet.header.sequence_number
-      # ssrc = packet.header.ssrc
-      IO.puts("inspect saw: #{inspect(buffer)}")
-
-      # new_state = update_seq(ssrc, seq, state)
-      # update_seq(ssrc, seq, state)
-      new_state = state
-
-      {{:ok, buffer: {:output, buffer}}, new_state}
-    end
-
-    @impl true
-    def handle_demand(pad, size, unit, _ctx, state) do
-      {{:ok, demand: {:input, size}}, state}
+    def handle_write(_pad, buffer, _ctx, state) do
+      send(state.test_pid, {state.name, buffer})
+      {{:ok, demand: :input}, state}
     end
   end
-
-  # test "" do
-  #  import Membrane.ParentSpec
-
-  #  opts = %Testing.Pipeline.Options{
-  #    elements: [
-  #      pcap: %Membrane.Element.Pcap.Source{path: "test/demo_rtp.pcap"},
-  #      inspect: Inspect,
-  #      rtp: Bin.RTP,
-  #      dumper1: Testing.Sink,
-  #      dumper2: Testing.Sink
-  #    ],
-  #    links: [
-  #      link(:pcap) |> to(:inspect) |> to(:rtp),
-  #      link(:rtp) |> to(:dumper1),
-  #      link(:rtp) |> to(:dumper2)
-  #    ]
-  #  }
-
-  #  {:ok, pipeline} = Testing.Pipeline.start_link(opts)
-
-  #  Testing.Pipeline.play(pipeline)
-  #  Process.sleep(2000)
-
-  #  # TODO properly test
-  #  assert_sink_buffer(pipeline, :dumper1, data)
-  #  data |> IO.inspect()
-  # end
 
   defmodule DynamicPipeline do
     use Membrane.Pipeline
 
     @impl true
-    def handle_init(_) do
+    def handle_init(%{test_pid: test_pid, pcap_file: pcap_file}) do
       spec = %ParentSpec{
         children: [
-          pcap: %Membrane.Element.Pcap.Source{path: "test/demo_rtp.pcap"},
+          pcap: %Membrane.Element.Pcap.Source{path: pcap_file},
           rtp: Bin.RTP
         ],
         links: [link(:pcap) |> to(:rtp)]
       }
 
-      {{:ok, spec: spec}, :no}
+      {{:ok, spec: spec}, test_pid}
     end
 
     @impl true
-    def handle_notification({:new_rtp_stream, ssrc, pt}, :rtp, state) do
-      IO.puts("Pipeline got ")
-      sink_name = String.to_atom(pt)
-      inspect_name = String.to_atom("inspect" <> pt)
-
+    def handle_notification({:new_rtp_stream, ssrc, _pt}, :rtp, state) do
       spec = %ParentSpec{
         children: [
-          {inspect_name, Inspect},
-          {sink_name, %Membrane.Element.File.Sink{location: pt <> "_file.h264"}}
+          {ssrc, %TestSink{test_pid: state, name: ssrc}}
         ],
         links: [
-          link(:rtp) |> via_out(Pad.ref(:output, ssrc)) |> to(inspect_name) |> to(sink_name)
+          link(:rtp) |> via_out(Pad.ref(:output, ssrc)) |> to(ssrc)
         ]
       }
 
@@ -118,12 +68,23 @@ defmodule Membrane.Test.RTP do
     end
   end
 
-  test "jdlak" do
-    import Membrane.ParentSpec
-
-    {:ok, pipeline} = DynamicPipeline.start_link(:ignored)
+  test "RTP streams passes through RTP bin properly" do
+    {:ok, pipeline} = DynamicPipeline.start_link(%{test_pid: self(), pcap_file: @pcap_file})
 
     Testing.Pipeline.play(pipeline)
-    Process.sleep(5000)
+
+    for stream_opts <- [@audio_stream, @video_stream] do
+      assert stream_opts.frames_n == get_buffers(stream_opts.ssrc)
+    end
+  end
+
+  defp get_buffers(n \\ 0, ssrc) do
+    receive do
+      {^ssrc, %Membrane.Buffer{}} ->
+        get_buffers(n + 1, ssrc)
+    after
+      @timeout ->
+        n
+    end
   end
 end
