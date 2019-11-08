@@ -36,7 +36,7 @@ defmodule Membrane.Bin.SSRCRouter do
     {{:ok, actions}, new_state}
   end
 
-  def handle_pad_added(Pad.ref(:input, _id) = pad, _ctx, state) do
+  def handle_pad_added(Pad.ref(:input, _id), _ctx, state) do
     {:ok, state}
   end
 
@@ -50,11 +50,11 @@ defmodule Membrane.Bin.SSRCRouter do
   end
 
   @impl true
-  def handle_demand(pad, size, _unit, ctx, %State{waiting_for_linking: true} = state) do
+  def handle_demand(_pad, _size, _unit, _ctx, %State{waiting_for_linking: true} = state) do
     {:ok, state}
   end
 
-  def handle_demand(pad, size, _unit, ctx, state) do
+  def handle_demand(pad, size, _unit, _ctx, state) do
     %PadPair{input_pad: input_pad} =
       state.pads
       |> Map.values()
@@ -64,7 +64,7 @@ defmodule Membrane.Bin.SSRCRouter do
   end
 
   @impl true
-  def handle_process(Pad.ref(:input, _id) = pad, buffer, ctx, state) do
+  def handle_process(Pad.ref(:input, _id) = pad, buffer, _ctx, state) do
     ssrc = get_ssrc(buffer)
 
     cond do
@@ -90,7 +90,7 @@ defmodule Membrane.Bin.SSRCRouter do
         {:ok, new_state}
 
       true ->
-        %{^ssrc => %PadPair{dest_pad: dest_pad} = ssrc_pads} = state.pads
+        %{^ssrc => %PadPair{dest_pad: dest_pad}} = state.pads
 
         actions = [demand: {pad, 10}, buffer: {dest_pad, buffer}]
 

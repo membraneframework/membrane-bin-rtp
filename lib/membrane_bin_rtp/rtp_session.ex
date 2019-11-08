@@ -1,7 +1,6 @@
 defmodule Membrane.Bin.RTPSession do
   use Membrane.Bin
 
-  alias Membrane.Element.RTP.Parser
   alias Membrane.ParentSpec
 
   def_options depayloader: [type: :module]

@@ -1,14 +1,9 @@
 defmodule Membrane.Bin.RTP do
   use Membrane.Bin
 
-  alias Membrane.Element
   alias Membrane.Bin
   alias Membrane.ParentSpec
-  alias Membrane.Protocol.SDP
   alias Membrane.Element.RTP
-
-  # TODO for now, every media stream has to have a mapping and only one mapping!
-  # We don't know what we will have on entry here
 
   def_input_pad :input, demand_unit: :buffers, caps: :any, availability: :on_request
 
@@ -19,7 +14,7 @@ defmodule Membrane.Bin.RTP do
   end
 
   @impl true
-  def handle_init(opts) do
+  def handle_init(_) do
     children = [ssrc_router: Bin.SSRCRouter]
     links = []
 
@@ -62,7 +57,6 @@ defmodule Membrane.Bin.RTP do
   end
 
   @impl true
-  # TODO can I only return new elements and links?
   def handle_notification({:new_rtp_stream, ssrc, payload_type}, :ssrc_router, state) do
     %State{ssrc_pt: ssrc_pt} = state
 
@@ -71,10 +65,6 @@ defmodule Membrane.Bin.RTP do
     {{:ok, notify: {:new_rtp_stream, ssrc, payload_type}}, %{state | ssrc_pt: new_ssrc_pt}}
   end
 
-  def handle_notification({:new_rtp_stream, ssrc, payload_type}, :ssrc_router, state) do
-  end
-
-  alias Membrane.Element.RTP.H264
   defp payload_type_to_depayloader("H264"), do: RTP.H264.Depayloader
   defp payload_type_to_depayloader("MPA"), do: RTP.MPEGAudio.Depayloader
 end
