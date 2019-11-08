@@ -33,8 +33,9 @@ defmodule MembraneBinRtp.MixProject do
       {:membrane_element_pcap,
        path: "/Users/dominikstanaszek/membrane-element-pcap", only: [:test]},
       {:membrane_element_udp, github: "membraneframework/membrane-element-udp"},
-      {:membrane_element_rtp_mpeguadio,
-       github: "membraneframework/membrane-element-rtp-mpegaudio"}
+      {:membrane_element_rtp_mpeguadio, path: "~/membrane-element-rtp-mpegaudio"},
+      {:membrane_element_sdl, github: "membraneframework/membrane-element-sdl"},
+      {:membrane_element_file, github: "membraneframework/membrane-element-file"}
     ]
   end
 end

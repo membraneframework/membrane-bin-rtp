@@ -14,6 +14,10 @@ defmodule Membrane.Bin.RTP do
 
   def_output_pad :output, caps: :any, demand_unit: :buffers, availability: :on_request
 
+  defmodule State do
+    defstruct ssrc_pt: %{}
+  end
+
   @impl true
   def handle_init(opts) do
     children = [ssrc_router: Bin.SSRCRouter]
@@ -21,43 +25,53 @@ defmodule Membrane.Bin.RTP do
 
     spec = %ParentSpec{children: children, links: links}
 
-    {{:ok, spec: spec}, :ignored}
+    {{:ok, spec: spec}, %State{}}
   end
 
   @impl true
-  def handle_pad_added({:dynamic, :input = pad_name, id}, _ctx, state) do
-    # :erlang.make_ref()}
-    parser_ref = {:parser, :rand.uniform(100_000)}
+  def handle_pad_added(Pad.ref(:input, _id) = pad, _ctx, state) do
+    parser_ref = {:parser, :erlang.make_ref()}
 
     children = [{parser_ref, RTP.Parser}]
 
-    links = [link_bin_input(pad_name, id: id) |> to(parser_ref) |> to(:ssrc_router)]
+    links = [link_bin_input(pad) |> to(parser_ref) |> to(:ssrc_router)]
 
     new_spec = %ParentSpec{children: children, links: links}
 
     {{:ok, spec: new_spec}, state}
   end
 
-  def handle_pad_added(_, _ctx, state) do
-    {:ok, state}
+  def handle_pad_added(Pad.ref(:output, ssrc) = pad, _ctx, %State{ssrc_pt: ssrc_pt} = state) do
+    depayloader =
+      ssrc_pt
+      |> Map.get(ssrc)
+      |> payload_type_to_depayloader()
+
+    rtp_session_name = {:rtp_session, :erlang.make_ref()}
+    new_children = [{rtp_session_name, %Bin.RTPSession{depayloader: depayloader}}]
+
+    new_links = [
+      link(:ssrc_router)
+      |> via_out(:output, options: [ssrc: ssrc])
+      |> to(rtp_session_name)
+      |> to_bin_output(pad)
+    ]
+
+    new_spec = %ParentSpec{children: new_children, links: new_links}
+    {{:ok, spec: new_spec}, state}
   end
 
   @impl true
   # TODO can I only return new elements and links?
   def handle_notification({:new_rtp_stream, ssrc, payload_type}, :ssrc_router, state) do
-    IO.puts("New rtp stream (payload type: #{inspect(payload_type)}, ssrc: #{inspect(ssrc)})")
-    depayloader = payload_type_to_depayloader(payload_type)
+    %State{ssrc_pt: ssrc_pt} = state
 
-    # :erlang.make_ref()}
-    rtp_session_name = {:rtp_session, :rand.uniform(100_000)}
-    new_children = [{rtp_session_name, %Bin.RTPSession{depayloader: depayloader}}]
+    new_ssrc_pt = ssrc_pt |> Map.put(ssrc, payload_type)
 
-    new_links = [
-      link(:ssrc_router) |> via_out(:output, pad: [ssrc: ssrc]) |> to(rtp_session_name)
-    ]
+    {{:ok, notify: {:new_rtp_stream, ssrc, payload_type}}, %{state | ssrc_pt: new_ssrc_pt}}
+  end
 
-    new_spec = %ParentSpec{children: new_children, links: new_links}
-    {{:ok, spec: new_spec}, state}
+  def handle_notification({:new_rtp_stream, ssrc, payload_type}, :ssrc_router, state) do
   end
 
   alias Membrane.Element.RTP.H264

@@ -19,7 +19,7 @@
   "membrane_element_rtp_mpegaudio": {:git, "https://github.com/membraneframework/membrane-element-rtp-mpegaudio.git", "39c3bfb1495b73851f9f7ff3da104c969910c450", []},
   "membrane_element_rtp_mpegaudio_dupa": {:git, "https://github.com/membraneframework/membrane-element-rtp-mpegaudio.git", "39c3bfb1495b73851f9f7ff3da104c969910c450", []},
   "membrane_element_rtp_mpeguadio": {:git, "https://github.com/membraneframework/membrane-element-rtp-mpegaudio.git", "39c3bfb1495b73851f9f7ff3da104c969910c450", []},
-  "membrane_element_sdl": {:git, "https://github.com/membraneframework/membrane-element-sdl", "459562094d369e72f5a312688c5fc7c8dc726dd0", []},
+  "membrane_element_sdl": {:git, "https://github.com/membraneframework/membrane-element-sdl.git", "ed948b8c4427247f90b905938c351e882407a8d6", []},
   "membrane_element_udp": {:git, "https://github.com/membraneframework/membrane-element-udp.git", "4e1b81762b2c46e9926c2f0d1cd26536508c3aa3", []},
   "membrane_loggers": {:hex, :membrane_loggers, "0.2.6", "c44ce921dd69f7be6aa4361c8631cd4899c371a4565facaada30ff56bd1eb85f", [:mix], [{:bunch_native, "~> 0.2.0", [hex: :bunch_native, repo: "hexpm", optional: false]}, {:bundlex, "~> 0.2.7", [hex: :bundlex, repo: "hexpm", optional: false]}, {:membrane_common_c, "~> 0.2.2", [hex: :membrane_common_c, repo: "hexpm", optional: false]}, {:membrane_core, "~> 0.4.0", [hex: :membrane_core, repo: "hexpm", optional: false]}], "hexpm"},
   "membrane_protocol_sdp": {:git, "https://github.com/membraneframework/membrane-protocol-sdp.git", "0ef56121bb40d165046324f397a8ca3fc24b252d", []},
