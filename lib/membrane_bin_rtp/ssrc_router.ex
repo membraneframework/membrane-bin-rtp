@@ -7,12 +7,33 @@ defmodule Membrane.Bin.SSRCRouter do
 
   def_output_pad :output, caps: :any, availability: :on_request, options: [ssrc: [type: :integer]]
 
+  @type ssrc :: integer()
+  @type fmt :: integer()
+  @type payload_type :: String.t()
+
   defmodule PadPair do
+    alias Membrane.Bin.SSRCRouter
+
+    @type t() :: %__MODULE__{
+            input_pad: :not_assigned | Pad.ref_t(),
+            dest_pad: :not_assigned | Pad.ref_t()
+          }
+
     defstruct input_pad: :not_assigned, dest_pad: :not_assigned
   end
 
   defmodule State do
-    defstruct pads: %{}, waiting_for_linking: %{}, fmt_mapping: %{}
+    alias Membrane.Bin.SSRCRouter
+
+    @type t() :: %__MODULE__{
+            pads: %{SSRCRouter.ssrc() => [PadPair.t()]},
+            waiting_for_linking: %{SSRCRouter.ssrc() => [Membrane.Buffer.t()]},
+            fmt_mapping: %{SSRCRouter.fmt() => SSRCRouter.payload_type()}
+          }
+
+    defstruct pads: %{},
+              waiting_for_linking: %{},
+              fmt_mapping: %{}
   end
 
   @impl true

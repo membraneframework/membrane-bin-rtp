@@ -5,24 +5,25 @@ defmodule Membrane.Bin.RTP do
   alias Membrane.ParentSpec
   alias Membrane.Element.RTP
 
-  def_options fmt_mapping: [type: :map, default: %{}]
+  def_options fmt_mapping: [type: :map, default: %{}],
+              depayloaders: [type: :fun, default: &__MODULE__.payload_type_to_depayloader/1]
 
   def_input_pad :input, demand_unit: :buffers, caps: :any, availability: :on_request
 
   def_output_pad :output, caps: :any, demand_unit: :buffers, availability: :on_request
 
   defmodule State do
-    defstruct ssrc_pt: %{}
+    defstruct ssrc_pt: %{}, depayloader_mapper: nil
   end
 
   @impl true
-  def handle_init(%{fmt_mapping: fmt_map}) do
+  def handle_init(%{fmt_mapping: fmt_map, depayloaders: d_mapper}) do
     children = [ssrc_router: %Bin.SSRCRouter{fmt_mapping: fmt_map}]
     links = []
 
     spec = %ParentSpec{children: children, links: links}
 
-    {{:ok, spec: spec}, %State{}}
+    {{:ok, spec: spec}, %State{depayloader_mapper: d_mapper}}
   end
 
   @impl true
@@ -42,7 +43,7 @@ defmodule Membrane.Bin.RTP do
     depayloader =
       ssrc_pt
       |> Map.get(ssrc)
-      |> payload_type_to_depayloader()
+      |> state.depayloader_mapper.()
 
     rtp_session_name = {:rtp_session, :erlang.make_ref()}
     new_children = [{rtp_session_name, %Bin.RTPSession{depayloader: depayloader}}]
@@ -67,6 +68,7 @@ defmodule Membrane.Bin.RTP do
     {{:ok, notify: {:new_rtp_stream, ssrc, payload_type}}, %{state | ssrc_pt: new_ssrc_pt}}
   end
 
-  defp payload_type_to_depayloader("H264"), do: RTP.H264.Depayloader
-  defp payload_type_to_depayloader("MPA"), do: RTP.MPEGAudio.Depayloader
+  @spec payload_type_to_depayloader(SSRCRouter.payload_type()) :: module()
+  def payload_type_to_depayloader("H264"), do: RTP.H264.Depayloader
+  def payload_type_to_depayloader("MPA"), do: RTP.MPEGAudio.Depayloader
 end
