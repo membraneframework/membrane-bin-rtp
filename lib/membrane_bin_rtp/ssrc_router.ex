@@ -51,7 +51,7 @@ defmodule Membrane.Bin.SSRCRouter do
 
     new_state = %State{state | pads: new_pads, waiting_for_linking: new_lb}
 
-    actions = [{:buffer, {pad, Enum.reverse(buffers_to_resend)}}]
+    actions = [{:buffer, {pad, buffers_to_resend}}]
 
     {{:ok, actions}, new_state}
   end
@@ -104,7 +104,7 @@ defmodule Membrane.Bin.SSRCRouter do
         new_state = %{
           state
           | waiting_for_linking:
-              Map.update(state.waiting_for_linking, ssrc, [buffer], &[buffer | &1])
+              Map.update(state.waiting_for_linking, ssrc, [buffer], &(&1 ++ [buffer]))
         }
 
         {:ok, new_state}
