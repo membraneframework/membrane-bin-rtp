@@ -1,4 +1,10 @@
 defmodule Membrane.Bin.RTPSession do
+  @doc """
+  This bin gets a parsed rtp stream on input and outputs raw media stream.
+  Its responsibility is to depayload the rtp stream and compensate the
+  jitter.
+  """
+
   use Membrane.Bin
 
   alias Membrane.ParentSpec

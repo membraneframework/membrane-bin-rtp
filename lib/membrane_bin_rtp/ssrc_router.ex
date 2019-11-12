@@ -1,4 +1,11 @@
 defmodule Membrane.Bin.SSRCRouter do
+  @doc """
+  This is a module that receives parsed rtp packets
+  and based on their ssrc routes them to an appropriate
+  rtp session bin and creates one if the received packet
+  is the first for this rtp stream.
+  """
+
   use Membrane.Filter
 
   def_options fmt_mapping: [type: :map]
@@ -42,18 +49,13 @@ defmodule Membrane.Bin.SSRCRouter do
   @impl true
   def handle_pad_added(Pad.ref(:output, _id) = pad, ctx, state) do
     %{ssrc: ssrc} = ctx.options
-
     %State{pads: pads, waiting_for_linking: lb} = state
 
     new_pads = Map.update!(pads, ssrc, &%{&1 | dest_pad: pad})
-
     {buffers_to_resend, new_lb} = lb |> Map.pop(ssrc)
-
     new_state = %State{state | pads: new_pads, waiting_for_linking: new_lb}
 
-    actions = [{:buffer, {pad, buffers_to_resend}}]
-
-    {{:ok, actions}, new_state}
+    {{:ok, [{:buffer, {pad, buffers_to_resend}}]}, new_state}
   end
 
   def handle_pad_added(Pad.ref(:input, _id), _ctx, state) do
@@ -74,6 +76,7 @@ defmodule Membrane.Bin.SSRCRouter do
     {:ok, state}
   end
 
+  @impl true
   def handle_demand(pad, size, _unit, _ctx, state) do
     %PadPair{input_pad: input_pad} =
       state.pads

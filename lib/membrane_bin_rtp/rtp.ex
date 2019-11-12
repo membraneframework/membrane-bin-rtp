@@ -1,4 +1,14 @@
 defmodule Membrane.Bin.RTP do
+  @doc """
+  This bin can have multiple inputs. On each it can consume one or many
+  rtp streams.
+
+  Every stream is parsed and then (based on ssrc field) an
+  appropriate rtp session is initiated. It notifies its parent about each new
+  stream with a notification of the format `{:new_rtp_stream, ssrc, _pt}`.
+  Parent should then connect to RTP bin dynamic output pad instance that will
+  have an id == `ssrc`.
+  """
   use Membrane.Bin
 
   alias Membrane.Bin
