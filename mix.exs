@@ -29,8 +29,6 @@ defmodule MembraneBinRtp.MixProject do
       {:membrane_element_rtp_jitter_buffer, github: "membraneframework/membrane-element-rtp-jitter-buffer"},
       {:membrane_protocol_sdp, github: "membraneframework/membrane-protocol-sdp"},
       {:membrane_element_rtp_mpeguadio, github: "membraneframework/membrane-element-rtp-mpegaudio"},
-      {:membrane_element_sdl, github: "membraneframework/membrane-element-sdl"},
-      {:membrane_element_file, github: "membraneframework/membrane-element-file"},
       {:dialyxir, "~> 1.0.0-rc.7", only: [:dev], runtime: false},
       {:membrane_element_rtp_h264, github: "membraneframework/membrane-element-rtp-h264", only: [:test]},
       {:membrane_element_ffmpeg_h264, "~> 0.1", only: [:test]},
