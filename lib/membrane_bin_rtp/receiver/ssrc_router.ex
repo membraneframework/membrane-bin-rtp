@@ -16,26 +16,13 @@ defmodule Membrane.Bin.RTP.Receiver.SSRCRouter do
   @type fmt :: integer()
   @type payload_type :: String.t()
 
-  defmodule PadPair do
-    @moduledoc false
-
-    alias Membrane.Bin.SSRCRouter
-
-    @type t() :: %__MODULE__{
-            input_pad: nil | Pad.ref_t(),
-            dest_pad: nil | Pad.ref_t()
-          }
-
-    defstruct input_pad: nil, dest_pad: nil
-  end
-
   defmodule State do
     @moduledoc false
 
     alias Membrane.Bin.SSRCRouter
 
     @type t() :: %__MODULE__{
-            pads: %{SSRCRouter.ssrc() => [PadPair.t()]},
+            pads: %{SSRCRouter.ssrc() => [Pad.ref_t()]},
             linking_buffers: %{SSRCRouter.ssrc() => [Membrane.Buffer.t()]}
           }
 
@@ -48,11 +35,10 @@ defmodule Membrane.Bin.RTP.Receiver.SSRCRouter do
 
   @impl true
   def handle_pad_added(Pad.ref(:output, ssrc) = pad, _ctx, state) do
-    %State{pads: pads, linking_buffers: lb} = state
+    %State{linking_buffers: lb} = state
 
-    new_pads = Map.update!(pads, ssrc, &%{&1 | dest_pad: pad})
     {buffers_to_send, new_lb} = lb |> Map.pop(ssrc)
-    new_state = %State{state | pads: new_pads, linking_buffers: new_lb}
+    new_state = %State{state | linking_buffers: new_lb}
 
     {{:ok, buffer: {pad, Enum.reverse(buffers_to_send)}}, new_state}
   end
@@ -66,7 +52,7 @@ defmodule Membrane.Bin.RTP.Receiver.SSRCRouter do
   def handle_pad_removed(Pad.ref(:input, _) = pad, _ctx, state) do
     new_pads =
       state.pads
-      |> Enum.filter(fn {_ssrc, %PadPair{input_pad: p}} -> p != pad end)
+      |> Enum.filter(fn {_ssrc, p} -> p != pad end)
       |> Enum.into(%{})
 
     {:ok, %State{state | pads: new_pads}}
@@ -83,7 +69,7 @@ defmodule Membrane.Bin.RTP.Receiver.SSRCRouter do
 
   @impl true
   def handle_demand(Pad.ref(:output, ssrc), _size, _unit, ctx, state) do
-    input_pad = state.pads[ssrc].input_pad
+    input_pad = state.pads[ssrc]
 
     {{:ok, demand: {input_pad, &(&1 + ctx.incoming_demand)}}, state}
   end
@@ -96,7 +82,7 @@ defmodule Membrane.Bin.RTP.Receiver.SSRCRouter do
       new_stream?(ssrc, state.pads) ->
         fmt = buffer.metadata.rtp.payload_type
 
-        new_pads = state.pads |> Map.put(ssrc, %PadPair{input_pad: pad})
+        new_pads = state.pads |> Map.put(ssrc, pad)
 
         {{:ok, notify: {:new_rtp_stream, ssrc, fmt}, demand: {pad, &(&1 + 1)}},
          %{
@@ -108,15 +94,13 @@ defmodule Membrane.Bin.RTP.Receiver.SSRCRouter do
       waiting_for_linking?(ssrc, state) ->
         new_state = %{
           state
-          | linking_buffers: Map.update(state.linking_buffers, ssrc, [buffer], &[buffer | &1])
+          | linking_buffers: Map.update!(state.linking_buffers, ssrc, &[buffer | &1])
         }
 
         {{:ok, demand: {pad, &(&1 + 1)}}, new_state}
 
       true ->
-        %{^ssrc => %PadPair{dest_pad: dest_pad}} = state.pads
-
-        {{:ok, buffer: {dest_pad, buffer}}, state}
+        {{:ok, buffer: {Pad.ref(:output, ssrc), buffer}}, state}
     end
   end
 
