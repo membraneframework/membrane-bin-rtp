@@ -32,7 +32,7 @@ defmodule Membrane.Bin.RTP.Receiver do
   defmodule State do
     @moduledoc false
 
-    defstruct fmt_mapping: %{}, ssrc_pt_mapping: %{}, pt_to_depayloader: nil, pad_parser: %{}
+    defstruct fmt_mapping: %{}, ssrc_pt_mapping: %{}, pt_to_depayloader: nil, parsers_by_pads: %{}
   end
 
   @impl true
@@ -55,9 +55,9 @@ defmodule Membrane.Bin.RTP.Receiver do
 
     new_spec = %ParentSpec{children: children, links: links}
 
-    pad_parser = state.pad_parser |> Map.put(pad, parser_ref)
+    parsers_by_pads = state.parsers_by_pads |> Map.put(pad, parser_ref)
 
-    state = %{state | pad_parser: pad_parser}
+    state = %{state | parsers_by_pads: parsers_by_pads}
 
     {{:ok, spec: new_spec}, state}
   end
@@ -89,9 +89,9 @@ defmodule Membrane.Bin.RTP.Receiver do
 
   @impl true
   def handle_pad_removed(Pad.ref(:input, _id) = pad, _ctx, state) do
-    parser_to_remove = state.pad_parser[pad]
+    {parser_to_remove, new_parsers_by_pads} = state.parsers_by_pads |> Map.pop(pad)
 
-    {{:ok, remove_child: parser_to_remove}, state}
+    {{:ok, remove_child: parser_to_remove}, %State{state | parsers_by_pads: new_parsers_by_pads}}
   end
 
   @impl true
