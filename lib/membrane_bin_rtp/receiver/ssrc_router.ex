@@ -1,4 +1,4 @@
-defmodule Membrane.Bin.SSRCRouter do
+defmodule Membrane.Bin.RTP.Receiver.SSRCRouter do
   @doc """
   A bin that receives parsed rtp packets
   and based on their ssrc routes them to an appropriate

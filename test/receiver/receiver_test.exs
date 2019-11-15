@@ -43,7 +43,7 @@ defmodule Membrane.Test.RTP do
       spec = %ParentSpec{
         children: [
           pcap: %Membrane.Element.Pcap.Source{path: pcap_file},
-          rtp: %Bin.RTP{fmt_mapping: fmt_mapping}
+          rtp: %Bin.RTP.Receiver{fmt_mapping: fmt_mapping}
         ],
         links: [link(:pcap) |> to(:rtp)]
       }

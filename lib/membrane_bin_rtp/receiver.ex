@@ -1,4 +1,4 @@
-defmodule Membrane.Bin.RTP do
+defmodule Membrane.Bin.RTP.Receiver do
   @doc """
   This bin can have multiple inputs. On each it can consume one or many
   rtp streams.
@@ -11,7 +11,7 @@ defmodule Membrane.Bin.RTP do
   """
   use Membrane.Bin
 
-  alias Membrane.Bin
+  alias Membrane.Bin.RTP.Receiver
   alias Membrane.ParentSpec
   alias Membrane.Element.RTP
 
@@ -38,7 +38,7 @@ defmodule Membrane.Bin.RTP do
 
   @impl true
   def handle_init(%{fmt_mapping: fmt_map, pt_to_depayloader: d_mapper}) do
-    children = [ssrc_router: %Bin.SSRCRouter{fmt_mapping: fmt_map}]
+    children = [ssrc_router: %Receiver.SSRCRouter{fmt_mapping: fmt_map}]
     links = []
 
     spec = %ParentSpec{children: children, links: links}
@@ -71,7 +71,7 @@ defmodule Membrane.Bin.RTP do
       |> state.depayloader_mapper.()
 
     rtp_session_name = {:rtp_session, make_ref()}
-    new_children = [{rtp_session_name, %Bin.RTPSession{depayloader: depayloader}}]
+    new_children = [{rtp_session_name, %Receiver.Session{depayloader: depayloader}}]
 
     new_links = [
       link(:ssrc_router)
@@ -94,7 +94,7 @@ defmodule Membrane.Bin.RTP do
      %{state | ssrc_pt_mapping: new_ssrc_pt_mapping}}
   end
 
-  @spec payload_type_to_depayloader(SSRCRouter.payload_type()) :: module()
+  @spec payload_type_to_depayloader(Receiver.SSRCRouter.payload_type()) :: module()
   def payload_type_to_depayloader("H264"), do: RTP.H264.Depayloader
   def payload_type_to_depayloader("MPA"), do: RTP.MPEGAudio.Depayloader
 end
