@@ -5,7 +5,7 @@ defmodule Membrane.Bin.RTP do
 
   Every stream is parsed and then (based on ssrc field) an
   appropriate rtp session is initiated. It notifies its parent about each new
-  stream with a notification of the format `{:new_rtp_stream, ssrc, _pt}`.
+  stream with a notification of the format `{:new_rtp_stream, ssrc, payload_type}`.
   Parent should then connect to RTP bin dynamic output pad instance that will
   have an id == `ssrc`.
   """
@@ -15,19 +15,29 @@ defmodule Membrane.Bin.RTP do
   alias Membrane.ParentSpec
   alias Membrane.Element.RTP
 
-  def_options fmt_mapping: [type: :map, default: %{}],
-              depayloaders: [type: :fun, default: &__MODULE__.payload_type_to_depayloader/1]
+  def_options fmt_mapping: [
+                spec: %{},
+                default: %{},
+                description: "Mapping of the custom payload types (form fmt > 95)"
+              ],
+              pt_to_depayloader: [
+                spec: (String.t() -> module()),
+                default: &__MODULE__.payload_type_to_depayloader/1,
+                description: "Mapping from payload type to a depayloader module"
+              ]
 
   def_input_pad :input, demand_unit: :buffers, caps: :any, availability: :on_request
 
   def_output_pad :output, caps: :any, demand_unit: :buffers, availability: :on_request
 
   defmodule State do
-    defstruct ssrc_pt: %{}, depayloader_mapper: nil
+    @moduledoc false
+
+    defstruct ssrc_pt_mapping: %{}, depayloader_mapper: nil
   end
 
   @impl true
-  def handle_init(%{fmt_mapping: fmt_map, depayloaders: d_mapper}) do
+  def handle_init(%{fmt_mapping: fmt_map, pt_to_depayloader: d_mapper}) do
     children = [ssrc_router: %Bin.SSRCRouter{fmt_mapping: fmt_map}]
     links = []
 
@@ -38,7 +48,7 @@ defmodule Membrane.Bin.RTP do
 
   @impl true
   def handle_pad_added(Pad.ref(:input, _id) = pad, _ctx, state) do
-    parser_ref = {:parser, :erlang.make_ref()}
+    parser_ref = {:parser, make_ref()}
 
     children = [{parser_ref, RTP.Parser}]
 
@@ -49,18 +59,23 @@ defmodule Membrane.Bin.RTP do
     {{:ok, spec: new_spec}, state}
   end
 
-  def handle_pad_added(Pad.ref(:output, ssrc) = pad, _ctx, %State{ssrc_pt: ssrc_pt} = state) do
+  @impl true
+  def handle_pad_added(
+        Pad.ref(:output, ssrc) = pad,
+        _ctx,
+        %State{ssrc_pt_mapping: ssrc_pt_mapping} = state
+      ) do
     depayloader =
-      ssrc_pt
+      ssrc_pt_mapping
       |> Map.get(ssrc)
       |> state.depayloader_mapper.()
 
-    rtp_session_name = {:rtp_session, :erlang.make_ref()}
+    rtp_session_name = {:rtp_session, make_ref()}
     new_children = [{rtp_session_name, %Bin.RTPSession{depayloader: depayloader}}]
 
     new_links = [
       link(:ssrc_router)
-      |> via_out(:output, options: [ssrc: ssrc])
+      |> via_out(Pad.ref(:output, ssrc))
       |> to(rtp_session_name)
       |> to_bin_output(pad)
     ]
@@ -71,11 +86,12 @@ defmodule Membrane.Bin.RTP do
 
   @impl true
   def handle_notification({:new_rtp_stream, ssrc, payload_type}, :ssrc_router, state) do
-    %State{ssrc_pt: ssrc_pt} = state
+    %State{ssrc_pt_mapping: ssrc_pt_mapping} = state
 
-    new_ssrc_pt = ssrc_pt |> Map.put(ssrc, payload_type)
+    new_ssrc_pt_mapping = ssrc_pt_mapping |> Map.put(ssrc, payload_type)
 
-    {{:ok, notify: {:new_rtp_stream, ssrc, payload_type}}, %{state | ssrc_pt: new_ssrc_pt}}
+    {{:ok, notify: {:new_rtp_stream, ssrc, payload_type}},
+     %{state | ssrc_pt_mapping: new_ssrc_pt_mapping}}
   end
 
   @spec payload_type_to_depayloader(SSRCRouter.payload_type()) :: module()

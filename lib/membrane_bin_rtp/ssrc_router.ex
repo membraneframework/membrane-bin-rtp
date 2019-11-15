@@ -1,6 +1,6 @@
 defmodule Membrane.Bin.SSRCRouter do
   @doc """
-  This is a module that receives parsed rtp packets
+  A bin that receives parsed rtp packets
   and based on their ssrc routes them to an appropriate
   rtp session bin and creates one if the received packet
   is the first for this rtp stream.
@@ -12,13 +12,15 @@ defmodule Membrane.Bin.SSRCRouter do
 
   def_input_pad :input, demand_unit: :buffers, caps: :any, availability: :on_request
 
-  def_output_pad :output, caps: :any, availability: :on_request, options: [ssrc: [type: :integer]]
+  def_output_pad :output, caps: :any, availability: :on_request
 
   @type ssrc :: integer()
   @type fmt :: integer()
   @type payload_type :: String.t()
 
   defmodule PadPair do
+    @moduledoc false
+
     alias Membrane.Bin.SSRCRouter
 
     @type t() :: %__MODULE__{
@@ -30,16 +32,18 @@ defmodule Membrane.Bin.SSRCRouter do
   end
 
   defmodule State do
+    @moduledoc false
+
     alias Membrane.Bin.SSRCRouter
 
     @type t() :: %__MODULE__{
             pads: %{SSRCRouter.ssrc() => [PadPair.t()]},
-            waiting_for_linking: %{SSRCRouter.ssrc() => [Membrane.Buffer.t()]},
+            linking_buffers: %{SSRCRouter.ssrc() => [Membrane.Buffer.t()]},
             fmt_mapping: %{SSRCRouter.fmt() => SSRCRouter.payload_type()}
           }
 
     defstruct pads: %{},
-              waiting_for_linking: %{},
+              linking_buffers: %{},
               fmt_mapping: %{}
   end
 
@@ -47,17 +51,17 @@ defmodule Membrane.Bin.SSRCRouter do
   def handle_init(%{fmt_mapping: fmt_map}), do: {:ok, %State{fmt_mapping: fmt_map}}
 
   @impl true
-  def handle_pad_added(Pad.ref(:output, _id) = pad, ctx, state) do
-    %{ssrc: ssrc} = ctx.options
-    %State{pads: pads, waiting_for_linking: lb} = state
+  def handle_pad_added(Pad.ref(:output, ssrc) = pad, _ctx, state) do
+    %State{pads: pads, linking_buffers: lb} = state
 
     new_pads = Map.update!(pads, ssrc, &%{&1 | dest_pad: pad})
-    {buffers_to_resend, new_lb} = lb |> Map.pop(ssrc)
-    new_state = %State{state | pads: new_pads, waiting_for_linking: new_lb}
+    {buffers_to_send, new_lb} = lb |> Map.pop(ssrc)
+    new_state = %State{state | pads: new_pads, linking_buffers: new_lb}
 
-    {{:ok, [{:buffer, {pad, buffers_to_resend}}]}, new_state}
+    {{:ok, buffer: {pad, buffers_to_send}}, new_state}
   end
 
+  @impl true
   def handle_pad_added(Pad.ref(:input, _id), _ctx, state) do
     {:ok, state}
   end
@@ -72,18 +76,18 @@ defmodule Membrane.Bin.SSRCRouter do
   end
 
   @impl true
-  def handle_demand(_pad, _size, _unit, _ctx, %State{waiting_for_linking: true} = state) do
+  def handle_demand(_pad, _size, _unit, _ctx, %State{linking_buffers: true} = state) do
     {:ok, state}
   end
 
   @impl true
-  def handle_demand(pad, size, _unit, _ctx, state) do
+  def handle_demand(pad, _size, _unit, ctx, state) do
     %PadPair{input_pad: input_pad} =
       state.pads
       |> Map.values()
       |> Enum.find(fn %PadPair{dest_pad: pad_ref} -> pad_ref == pad end)
 
-    {{:ok, demand: {input_pad, size}}, state}
+    {{:ok, demand: {input_pad, &(&1 + ctx.incoming_demand)}}, state}
   end
 
   @impl true
@@ -100,14 +104,13 @@ defmodule Membrane.Bin.SSRCRouter do
          %{
            state
            | pads: new_pads,
-             waiting_for_linking: Map.put(state.waiting_for_linking, ssrc, [buffer])
+             linking_buffers: Map.put(state.linking_buffers, ssrc, [buffer])
          }}
 
       waiting_for_linking?(ssrc, state) ->
         new_state = %{
           state
-          | waiting_for_linking:
-              Map.update(state.waiting_for_linking, ssrc, [buffer], &(&1 ++ [buffer]))
+          | linking_buffers: Map.update(state.linking_buffers, ssrc, [buffer], &(&1 ++ [buffer]))
         }
 
         {:ok, new_state}
@@ -115,13 +118,11 @@ defmodule Membrane.Bin.SSRCRouter do
       true ->
         %{^ssrc => %PadPair{dest_pad: dest_pad}} = state.pads
 
-        actions = [demand: {pad, 10}, buffer: {dest_pad, buffer}]
-
-        {{:ok, actions}, state}
+        {{:ok, buffer: {dest_pad, buffer}}, state}
     end
   end
 
-  defp waiting_for_linking?(ssrc, %State{waiting_for_linking: lb}), do: Map.has_key?(lb, ssrc)
+  defp waiting_for_linking?(ssrc, %State{linking_buffers: lb}), do: Map.has_key?(lb, ssrc)
 
   defp get_ssrc(%Membrane.Buffer{metadata: %{rtp: %{ssrc: ssrc}}}), do: ssrc
 
