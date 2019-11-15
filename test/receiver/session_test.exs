@@ -1,4 +1,4 @@
-defmodule Membrane.Test.RTP.Receiver.Session do
+defmodule Membrane.Bin.RTP.Receiver.SessionTest do
   use ExUnit.Case
   alias Membrane.Testing
 

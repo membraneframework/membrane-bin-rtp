@@ -1,7 +1,6 @@
 defmodule Membrane.Bin.RTP.Receiver do
   @doc """
-  This bin can have multiple inputs. On each it can consume one or many
-  rtp streams.
+  A bin consuming one or more RTP streams on each input and outputting a stream from one ssrc on each output
 
   Every stream is parsed and then (based on ssrc field) an
   appropriate rtp session is initiated. It notifies its parent about each new
@@ -16,7 +15,7 @@ defmodule Membrane.Bin.RTP.Receiver do
   alias Membrane.Element.RTP
 
   def_options fmt_mapping: [
-                spec: %{},
+                spec: %{integer => String.t()},
                 default: %{},
                 description: "Mapping of the custom payload types (form fmt > 95)"
               ],
