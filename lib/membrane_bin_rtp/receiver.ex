@@ -33,17 +33,17 @@ defmodule Membrane.Bin.RTP.Receiver do
   defmodule State do
     @moduledoc false
 
-    defstruct ssrc_pt_mapping: %{}, depayloader_mapper: nil
+    defstruct fmt_mapping: %{}, ssrc_pt_mapping: %{}, pt_to_depayloader: nil
   end
 
   @impl true
   def handle_init(%{fmt_mapping: fmt_map, pt_to_depayloader: d_mapper}) do
-    children = [ssrc_router: %Receiver.SSRCRouter{fmt_mapping: fmt_map}]
+    children = [ssrc_router: Receiver.SSRCRouter]
     links = []
 
     spec = %ParentSpec{children: children, links: links}
 
-    {{:ok, spec: spec}, %State{depayloader_mapper: d_mapper}}
+    {{:ok, spec: spec}, %State{fmt_mapping: fmt_map, pt_to_depayloader: d_mapper}}
   end
 
   @impl true
@@ -68,7 +68,7 @@ defmodule Membrane.Bin.RTP.Receiver do
     depayloader =
       ssrc_pt_mapping
       |> Map.get(ssrc)
-      |> state.depayloader_mapper.()
+      |> state.pt_to_depayloader.()
 
     rtp_session_name = {:rtp_session, make_ref()}
     new_children = [{rtp_session_name, %Receiver.Session{depayloader: depayloader}}]
@@ -85,13 +85,25 @@ defmodule Membrane.Bin.RTP.Receiver do
   end
 
   @impl true
-  def handle_notification({:new_rtp_stream, ssrc, payload_type}, :ssrc_router, state) do
+  def handle_notification({:new_rtp_stream, ssrc, fmt}, :ssrc_router, state) do
+    {:ok, payload_type} = get_payload_type(fmt, state.fmt_mapping)
+
     %State{ssrc_pt_mapping: ssrc_pt_mapping} = state
 
     new_ssrc_pt_mapping = ssrc_pt_mapping |> Map.put(ssrc, payload_type)
 
     {{:ok, notify: {:new_rtp_stream, ssrc, payload_type}},
      %{state | ssrc_pt_mapping: new_ssrc_pt_mapping}}
+  end
+
+  defp get_payload_type(fmt, fmt_mapping) do
+    case fmt_mapping do
+      %{^fmt => payload_type} ->
+        {:ok, payload_type}
+
+      _ ->
+        {:error, :not_found}
+    end
   end
 
   @spec payload_type_to_depayloader(Receiver.SSRCRouter.payload_type()) :: module()

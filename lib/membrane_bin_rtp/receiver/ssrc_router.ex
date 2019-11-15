@@ -8,8 +8,6 @@ defmodule Membrane.Bin.RTP.Receiver.SSRCRouter do
 
   use Membrane.Filter
 
-  def_options fmt_mapping: [type: :map]
-
   def_input_pad :input, demand_unit: :buffers, caps: :any, availability: :on_request
 
   def_output_pad :output, caps: :any, availability: :on_request
@@ -38,17 +36,15 @@ defmodule Membrane.Bin.RTP.Receiver.SSRCRouter do
 
     @type t() :: %__MODULE__{
             pads: %{SSRCRouter.ssrc() => [PadPair.t()]},
-            linking_buffers: %{SSRCRouter.ssrc() => [Membrane.Buffer.t()]},
-            fmt_mapping: %{SSRCRouter.fmt() => SSRCRouter.payload_type()}
+            linking_buffers: %{SSRCRouter.ssrc() => [Membrane.Buffer.t()]}
           }
 
     defstruct pads: %{},
-              linking_buffers: %{},
-              fmt_mapping: %{}
+              linking_buffers: %{}
   end
 
   @impl true
-  def handle_init(%{fmt_mapping: fmt_map}), do: {:ok, %State{fmt_mapping: fmt_map}}
+  def handle_init(_), do: {:ok, %State{}}
 
   @impl true
   def handle_pad_added(Pad.ref(:output, ssrc) = pad, _ctx, state) do
@@ -96,11 +92,11 @@ defmodule Membrane.Bin.RTP.Receiver.SSRCRouter do
 
     cond do
       new_stream?(ssrc, state.pads) ->
-        {:ok, payload_type} = get_payload_type(buffer, state.fmt_mapping)
+        fmt = get_fmt(buffer)
 
         new_pads = state.pads |> Map.put(ssrc, %PadPair{input_pad: pad})
 
-        {{:ok, notify: {:new_rtp_stream, ssrc, payload_type}},
+        {{:ok, notify: {:new_rtp_stream, ssrc, fmt}},
          %{
            state
            | pads: new_pads,
@@ -126,15 +122,7 @@ defmodule Membrane.Bin.RTP.Receiver.SSRCRouter do
 
   defp get_ssrc(%Membrane.Buffer{metadata: %{rtp: %{ssrc: ssrc}}}), do: ssrc
 
-  defp get_payload_type(%Membrane.Buffer{metadata: %{rtp: %{payload_type: fmt}}}, fmt_mapping) do
-    case fmt_mapping do
-      %{^fmt => payload_type} ->
-        {:ok, payload_type}
-
-      _ ->
-        {:error, :not_found}
-    end
-  end
+  defp get_fmt(%Membrane.Buffer{metadata: %{rtp: %{payload_type: fmt}}}), do: fmt
 
   defp new_stream?(ssrc, pads), do: not Map.has_key?(pads, ssrc)
 end
