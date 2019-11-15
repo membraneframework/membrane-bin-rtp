@@ -63,6 +63,16 @@ defmodule Membrane.Bin.RTP.Receiver.SSRCRouter do
   end
 
   @impl true
+  def handle_pad_removed(Pad.ref(:input, _) = pad, _ctx, state) do
+    new_pads =
+      state.pads
+      |> Enum.filter(fn {_ssrc, %PadPair{input_pad: p}} -> p != pad end)
+      |> Enum.into(%{})
+
+    {:ok, %State{state | pads: new_pads}}
+  end
+
+  @impl true
   def handle_prepared_to_playing(ctx, state) do
     actions =
       ctx.pads
@@ -88,7 +98,7 @@ defmodule Membrane.Bin.RTP.Receiver.SSRCRouter do
 
         new_pads = state.pads |> Map.put(ssrc, %PadPair{input_pad: pad})
 
-        {{:ok, notify: {:new_rtp_stream, ssrc, fmt}},
+        {{:ok, notify: {:new_rtp_stream, ssrc, fmt}, demand: {pad, &(&1 + 1)}},
          %{
            state
            | pads: new_pads,
