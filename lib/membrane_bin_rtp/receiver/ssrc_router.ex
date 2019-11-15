@@ -111,7 +111,7 @@ defmodule Membrane.Bin.RTP.Receiver.SSRCRouter do
           | linking_buffers: Map.update(state.linking_buffers, ssrc, [buffer], &[buffer | &1])
         }
 
-        {:ok, new_state}
+        {{:ok, demand: {pad, &(&1 + 1)}}, new_state}
 
       true ->
         %{^ssrc => %PadPair{dest_pad: dest_pad}} = state.pads
