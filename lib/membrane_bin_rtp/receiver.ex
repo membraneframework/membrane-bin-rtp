@@ -14,6 +14,8 @@ defmodule Membrane.Bin.RTP.Receiver do
   alias Membrane.ParentSpec
   alias Membrane.Element.RTP
 
+  @static_fmt_file "rtp-parameters-1.csv"
+
   def_options fmt_mapping: [
                 spec: %{integer => String.t()},
                 default: %{},
@@ -120,13 +122,27 @@ defmodule Membrane.Bin.RTP.Receiver do
      %{state | ssrc_pt_mapping: new_ssrc_pt_mapping}}
   end
 
-  defp get_payload_type(fmt, fmt_mapping) do
-    case fmt_mapping do
-      %{^fmt => payload_type} ->
-        {:ok, payload_type}
+  File.stream!(@static_fmt_file)
+  |> CSV.decode!()
+  |> Stream.drop(1)
+  |> Enum.filter(fn [_, pt | _] ->
+    pt != "Unassigned" and pt != "dynamic" and not String.starts_with?(pt, "Reserved")
+  end)
+  |> Enum.map(fn [fmt_s, pt | _] ->
+    {fmt, ""} = fmt_s |> Integer.parse()
 
-      _ ->
-        {:error, :not_found}
+    def fmt_to_pt(unquote(fmt)), do: {:ok, unquote(pt)}
+  end)
+
+  def fmt_to_pt(_), do: {:error, :not_static}
+
+  defp get_payload_type(fmt, fmt_mapping) do
+    case fmt_to_pt(fmt) do
+      {:ok, pt} ->
+        {:ok, pt}
+
+      {:error, :not_static} ->
+        if pt = fmt_mapping[fmt], do: {:ok, pt}, else: {:error, :not_found}
     end
   end
 
