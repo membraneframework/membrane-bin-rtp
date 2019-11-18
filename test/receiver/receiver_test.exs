@@ -48,14 +48,14 @@ defmodule Membrane.Bin.RTP.Receiver.ReceiverTest do
         links: [link(:pcap) |> to(:rtp)]
       }
 
-      {{:ok, spec: spec}, test_pid}
+      {{:ok, spec: spec}, %{test_pid: test_pid, pcap: pcap_file}}
     end
 
     @impl true
     def handle_notification({:new_rtp_stream, ssrc, _pt}, :rtp, state) do
       spec = %ParentSpec{
         children: [
-          {ssrc, %TestSink{test_pid: state, name: ssrc}}
+          {ssrc, %TestSink{test_pid: state.test_pid, name: ssrc}}
         ],
         links: [
           link(:rtp) |> via_out(Pad.ref(:output, ssrc)) |> to(ssrc)
@@ -68,6 +68,21 @@ defmodule Membrane.Bin.RTP.Receiver.ReceiverTest do
     def handle_notification(_, _, state) do
       {:ok, state}
     end
+
+    def handle_other(:remove_udp, state) do
+      {{:ok, remove_child: :pcap}, state}
+    end
+
+    def handle_other(:restore_udp, state) do
+      spec = %ParentSpec{
+        children: [
+          pcap: %Membrane.Element.Pcap.Source{path: state.pcap}
+        ],
+        links: [link(:pcap) |> to(:rtp)]
+      }
+
+      {{:ok, spec: spec}, state}
+    end
   end
 
   test "RTP streams passes through RTP bin properly" do
@@ -79,6 +94,32 @@ defmodule Membrane.Bin.RTP.Receiver.ReceiverTest do
       })
 
     Testing.Pipeline.play(pipeline)
+
+    for stream_opts <- [@audio_stream, @video_stream] do
+      assert stream_opts.frames_n == get_buffers(stream_opts.ssrc)
+    end
+  end
+
+  test "Elements can be unlinked and linked again freely" do
+    {:ok, pipeline} =
+      DynamicPipeline.start_link(%{
+        test_pid: self(),
+        pcap_file: @pcap_file,
+        fmt_mapping: @fmt_mapping
+      })
+
+    Testing.Pipeline.play(pipeline)
+
+    :sys.get_state(pipeline) |> IO.inspect(label: "before removing")
+    send(pipeline, :remove_udp)
+
+    Process.sleep(800)
+    :sys.get_state(pipeline) |> IO.inspect(label: "after removing")
+
+    send(pipeline, :restore_udp)
+
+    Process.sleep(300)
+    :sys.get_state(pipeline) |> IO.inspect(label: "after restoring")
 
     for stream_opts <- [@audio_stream, @video_stream] do
       assert stream_opts.frames_n == get_buffers(stream_opts.ssrc)

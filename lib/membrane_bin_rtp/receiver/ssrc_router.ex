@@ -44,16 +44,26 @@ defmodule Membrane.Bin.RTP.Receiver.SSRCRouter do
   end
 
   @impl true
-  def handle_pad_added(Pad.ref(:input, _id), _ctx, state) do
-    {:ok, state}
+  def handle_pad_added(Pad.ref(:input, _id) = pad, ctx, state) do
+    if ctx.playback_state == :playing,
+      do: {{:ok, demand: {pad, 1}}, state},
+      else: {:ok, state}
   end
 
   @impl true
   def handle_pad_removed(Pad.ref(:input, _) = pad, _ctx, state) do
+    IO.puts "ala"
     new_pads =
       state.pads
       |> Enum.filter(fn {_ssrc, p} -> p != pad end)
       |> Enum.into(%{})
+
+    # Not needed as core send eos itself
+    #output_pads_eos =
+    #  state.pads
+    #  |> Enum.filter(fn {_ssrc, p} -> p == pad end)
+    #  |> Enum.map(fn {ssrc, _} -> ssrc end)
+    #  |> Enum.map(fn ssrc -> {:end_of_stream, Pad.ref(:output, ssrc)} end)
 
     {:ok, %State{state | pads: new_pads}}
   end
