@@ -32,7 +32,10 @@ defmodule Membrane.Bin.RTP.Receiver do
   defmodule State do
     @moduledoc false
 
-    defstruct fmt_mapping: %{}, ssrc_pt_mapping: %{}, pt_to_depayloader: nil, parsers_by_pads: %{}
+    defstruct fmt_mapping: %{},
+              ssrc_pt_mapping: %{},
+              pt_to_depayloader: nil,
+              children_by_pads: %{}
   end
 
   @impl true
@@ -55,9 +58,9 @@ defmodule Membrane.Bin.RTP.Receiver do
 
     new_spec = %ParentSpec{children: children, links: links}
 
-    parsers_by_pads = state.parsers_by_pads |> Map.put(pad, parser_ref)
+    children_by_pads = state.children_by_pads |> Map.put(pad, parser_ref)
 
-    state = %{state | parsers_by_pads: parsers_by_pads}
+    state = %{state | children_by_pads: children_by_pads}
 
     {{:ok, spec: new_spec}, state}
   end
@@ -84,19 +87,25 @@ defmodule Membrane.Bin.RTP.Receiver do
     ]
 
     new_spec = %ParentSpec{children: new_children, links: new_links}
-    {{:ok, spec: new_spec}, state}
+    new_children_by_pads = state.children_by_pads |> Map.put(pad, rtp_session_name)
+
+    {{:ok, spec: new_spec}, %State{state | children_by_pads: new_children_by_pads}}
   end
 
   @impl true
   def handle_pad_removed(Pad.ref(:input, _id) = pad, _ctx, state) do
-    {parser_to_remove, new_parsers_by_pads} = state.parsers_by_pads |> Map.pop(pad)
+    {parser_to_remove, new_children_by_pads} = state.children_by_pads |> Map.pop(pad)
 
-    {{:ok, remove_child: parser_to_remove}, %State{state | parsers_by_pads: new_parsers_by_pads}}
+    {{:ok, remove_child: parser_to_remove},
+     %State{state | children_by_pads: new_children_by_pads}}
   end
 
   @impl true
-  def handle_pad_removed(Pad.ref(:output, _ssrc), _ctx, state) do
-    {:ok, state}
+  def handle_pad_removed(Pad.ref(:output, _ssrc) = pad, _ctx, state) do
+    {session_to_remove, new_children_by_pads} = state.children_by_pads |> Map.pop(pad)
+
+    {{:ok, remove_child: session_to_remove},
+     %State{state | children_by_pads: new_children_by_pads}}
   end
 
   @impl true

@@ -22,7 +22,7 @@ defmodule Membrane.Bin.RTP.Receiver.SSRCRouter do
     alias Membrane.Bin.SSRCRouter
 
     @type t() :: %__MODULE__{
-            pads: %{SSRCRouter.ssrc() => [Pad.ref_t()]},
+            pads: %{SSRCRouter.ssrc() => [input_pad :: Pad.ref_t()]},
             linking_buffers: %{SSRCRouter.ssrc() => [Membrane.Buffer.t()]}
           }
 
