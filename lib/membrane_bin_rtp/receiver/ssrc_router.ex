@@ -104,6 +104,13 @@ defmodule Membrane.Bin.RTP.Receiver.SSRCRouter do
     end
   end
 
+  @impl true
+  def handle_caps(pad, caps, _ctx, state) do
+    # TODO Merge this element with Membrane.RTP.Parser and then handle caps correctly.
+    # For now information about streams are in buffers metadata
+    {:ok, state}
+  end
+
   defp waiting_for_linking?(ssrc, %State{linking_buffers: lb}), do: Map.has_key?(lb, ssrc)
 
   defp new_stream?(ssrc, pads), do: not Map.has_key?(pads, ssrc)
