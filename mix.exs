@@ -1,11 +1,19 @@
-defmodule MembraneBinRtp.MixProject do
+defmodule Membrane.Bin.RTP.MixProject do
   use Mix.Project
+
+  @version "0.1.0"
+  @github_url "https://github.com/membraneframework/membrane-bin-rtp"
 
   def project do
     [
       app: :membrane_bin_rtp,
-      version: "0.1.0",
+      version: @version,
       elixir: "~> 1.7",
+      name: "Membrane Bin RTP",
+      description: "Membrane Multimedia Framework (RTP bin)",
+      package: package(),
+      source_url: @github_url,
+      docs: docs(),
       start_permanent: Mix.env() == :prod,
       deps: deps()
     ]
@@ -18,21 +26,38 @@ defmodule MembraneBinRtp.MixProject do
     ]
   end
 
+  defp docs do
+    [
+      main: "readme",
+      extras: ["README.md"],
+      source_ref: "v#{@version}"
+    ]
+  end
+
+  defp package do
+    [
+      maintainers: ["Membrane Team"],
+      licenses: ["Apache 2.0"],
+      links: %{
+        "GitHub" => @github_url,
+        "Membrane Framework Homepage" => "https://membraneframework.org"
+      }
+    ]
+  end
+
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      # {:dep_from_hexpm, "~> 0.3.0"},
-      # {:dep_from_git, git: "https://github.com/elixir-lang/my_dep.git", tag: "0.1.0"},
-      # TODO replace with proper gihtub refs
-      {:membrane_core, path: "~/membrane-core", override: true},
-      {:membrane_element_rtp, path: "/Users/dominikstanaszek/membrane-element-rtp"},
-      {:membrane_element_rtp_jitter_buffer, github: "membraneframework/membrane-element-rtp-jitter-buffer"},
-      {:membrane_protocol_sdp, github: "membraneframework/membrane-protocol-sdp"},
-      {:membrane_element_rtp_mpeguadio, github: "membraneframework/membrane-element-rtp-mpegaudio"},
+      {:membrane_core, "~> 0.5.0"},
+      {:membrane_element_rtp, "~> 0.3.0"},
+      {:membrane_element_rtp_jitter_buffer, "~> 0.2.0"},
+      {:membrane_protocol_sdp, "~> 0.1.0"},
+      {:membrane_element_rtp_mpeguadio, "~> 0.3.0"},
       {:dialyxir, "~> 1.0.0-rc.7", only: [:dev], runtime: false},
-      {:membrane_element_rtp_h264, github: "membraneframework/membrane-element-rtp-h264", only: [:test]},
-      {:membrane_element_ffmpeg_h264, "~> 0.1", only: [:test]},
-      {:membrane_element_pcap, github: "membraneframework/membrane-element-pcap", only: [:test]}
+      {:membrane_element_rtp_h264, "~> 0.2.0", only: [:test]},
+      {:membrane_element_ffmpeg_h264, "~> 0.2.0", only: [:test]},
+      {:membrane_element_pcap, github: "membraneframework/membrane-element-pcap", only: [:test]},
+      {:csv, "~> 2.3", runtime: false}
     ]
   end
 end

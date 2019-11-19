@@ -105,7 +105,7 @@ defmodule Membrane.Bin.RTP.Receiver.SSRCRouter do
   end
 
   @impl true
-  def handle_caps(pad, caps, _ctx, state) do
+  def handle_caps(_pad, _caps, _ctx, state) do
     # TODO Merge this element with Membrane.RTP.Parser and then handle caps correctly.
     # For now information about streams are in buffers metadata
     {:ok, state}
