@@ -1,5 +1,5 @@
 defmodule Membrane.Bin.RTP.Receiver.Session do
-  @doc """
+  @moduledoc """
   This bin gets a parsed rtp stream on input and outputs raw media stream.
   Its responsibility is to depayload the rtp stream and compensate the
   jitter.
