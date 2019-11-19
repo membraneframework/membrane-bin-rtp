@@ -1,5 +1,5 @@
 defmodule Membrane.Bin.RTP.Receiver do
-  @doc """
+  @moduledoc """
   A bin consuming one or more RTP streams on each input and outputting a stream from one ssrc on each output
 
   Every stream is parsed and then (based on ssrc field) an
@@ -131,10 +131,10 @@ defmodule Membrane.Bin.RTP.Receiver do
   |> Enum.map(fn [fmt_s, pt | _] ->
     {fmt, ""} = fmt_s |> Integer.parse()
 
-    def fmt_to_pt(unquote(fmt)), do: {:ok, unquote(pt)}
+    defp fmt_to_pt(unquote(fmt)), do: {:ok, unquote(pt)}
   end)
 
-  def fmt_to_pt(_), do: {:error, :not_static}
+  defp fmt_to_pt(_), do: {:error, :not_static}
 
   defp get_payload_type(fmt, fmt_mapping) do
     case fmt_to_pt(fmt) do
