@@ -14,7 +14,7 @@ defmodule Membrane.Bin.RTP.Receiver do
   alias Membrane.ParentSpec
   alias Membrane.Element.RTP
 
-  @static_fmt_file "rtp-parameters-1.csv"
+  @static_fmt_file "rtp-parameters-1.csv" |> Path.expand(__DIR__)
 
   def_options fmt_mapping: [
                 spec: %{integer => String.t()},
