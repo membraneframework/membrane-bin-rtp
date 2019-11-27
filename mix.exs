@@ -1,7 +1,7 @@
 defmodule Membrane.Bin.RTP.MixProject do
   use Mix.Project
 
-  @version "0.1.0"
+  @version "0.1.1"
   @github_url "https://github.com/membraneframework/membrane-bin-rtp"
 
   def project do
@@ -53,7 +53,7 @@ defmodule Membrane.Bin.RTP.MixProject do
       {:membrane_element_rtp_jitter_buffer, "~> 0.2.0"},
       {:membrane_protocol_sdp, "~> 0.1.0"},
       {:membrane_element_rtp_mpeguadio, "~> 0.3.0"},
-      {:membrane_element_rtp_h264, "~> 0.2.0", only: [:test]},
+      {:membrane_element_rtp_h264, "~> 0.2.0"},
       {:membrane_element_ffmpeg_h264, "~> 0.2.0", only: [:test]},
       {:membrane_element_pcap, github: "membraneframework/membrane-element-pcap", only: [:test]},
       {:csv, "~> 2.3", runtime: false},
