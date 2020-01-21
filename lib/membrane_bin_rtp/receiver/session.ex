@@ -23,7 +23,10 @@ defmodule Membrane.Bin.RTP.Receiver.Session do
     ]
 
     links = [
-      link_bin_input() |> to(:jitter_buffer) |> to(:depayloader) |> to_bin_output()
+      link_bin_input()
+      |> to(:jitter_buffer)
+      |> to(:depayloader)
+      |> to_bin_output()
     ]
 
     spec = %ParentSpec{

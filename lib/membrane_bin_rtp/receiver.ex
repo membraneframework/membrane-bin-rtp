@@ -15,6 +15,7 @@ defmodule Membrane.Bin.RTP.Receiver do
   alias Membrane.Element.RTP
 
   @static_fmt_file "rtp-parameters-1.csv" |> Path.expand(__DIR__)
+  @bin_buffer_size 500
 
   def_options fmt_mapping: [
                 spec: %{integer => String.t()},
@@ -55,8 +56,14 @@ defmodule Membrane.Bin.RTP.Receiver do
     parser_ref = {:parser, make_ref()}
 
     children = [{parser_ref, RTP.Parser}]
+    warn_buf_size = div(@bin_buffer_size, 2)
 
-    links = [link_bin_input(pad) |> to(parser_ref) |> to(:ssrc_router)]
+    links = [
+      link_bin_input(pad)
+      |> via_in(:input, buffer: [warn_size: warn_buf_size, fail_size: @bin_buffer_size])
+      |> to(parser_ref)
+      |> to(:ssrc_router)
+    ]
 
     new_spec = %ParentSpec{children: children, links: links}
 
