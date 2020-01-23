@@ -56,6 +56,7 @@ defmodule Membrane.Bin.RTP.MixProject do
       {:membrane_element_rtp_h264, "~> 0.2.0"},
       {:membrane_element_ffmpeg_h264, "~> 0.2.0", only: [:test]},
       {:membrane_element_pcap, github: "membraneframework/membrane-element-pcap", only: [:test]},
+      {:membrane_element_rtp_aac, github: "membraneframework/membrane-element-rtp-aac", ref: "develop"},
       {:csv, "~> 2.3", runtime: false},
       {:ex_doc, "~> 0.21", only: :dev, runtime: false},
       {:dialyxir, "~> 1.0.0-rc.7", only: [:dev], runtime: false}

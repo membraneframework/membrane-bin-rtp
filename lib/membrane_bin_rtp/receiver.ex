@@ -155,4 +155,5 @@ defmodule Membrane.Bin.RTP.Receiver do
   @spec payload_type_to_depayloader(Receiver.SSRCRouter.payload_type()) :: module()
   def payload_type_to_depayloader("H264"), do: RTP.H264.Depayloader
   def payload_type_to_depayloader("MPA"), do: RTP.MPEGAudio.Depayloader
+  def payload_type_to_depayloader("AAC"), do: RTP.AAC.Depayloader
 end
