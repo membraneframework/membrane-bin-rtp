@@ -8,9 +8,12 @@ defmodule Membrane.Bin.RTP.Receiver.SSRCRouter do
 
   use Membrane.Filter
 
+  alias Membrane.Bin.RTP.Reporter
+
   def_input_pad :input, demand_unit: :buffers, caps: :any, availability: :on_request
 
-  def_output_pad :output, caps: :any, availability: :on_request
+  def_output_pad :rtp, caps: :any, availability: :on_request
+  def_output_pad :rtcp, caps: :any
 
   @type ssrc :: integer()
   @type fmt :: integer()
@@ -19,7 +22,7 @@ defmodule Membrane.Bin.RTP.Receiver.SSRCRouter do
   defmodule State do
     @moduledoc false
 
-    alias Membrane.Bin.SSRCRouter
+    alias Membrane.Bin.RTP.Receiver.SSRCRouter
 
     @type t() :: %__MODULE__{
             pads: %{SSRCRouter.ssrc() => [input_pad :: Pad.ref_t()]},
@@ -34,7 +37,7 @@ defmodule Membrane.Bin.RTP.Receiver.SSRCRouter do
   def handle_init(_), do: {:ok, %State{}}
 
   @impl true
-  def handle_pad_added(Pad.ref(:output, ssrc) = pad, _ctx, state) do
+  def handle_pad_added(Pad.ref(:rtp, ssrc) = pad, _ctx, state) do
     %State{linking_buffers: lb} = state
 
     {buffers_to_send, new_lb} = lb |> Map.pop(ssrc)
@@ -62,26 +65,36 @@ defmodule Membrane.Bin.RTP.Receiver.SSRCRouter do
   def handle_prepared_to_playing(ctx, state) do
     actions =
       ctx.pads
+      |> Map.to_list()
+      |> Enum.filter(&match?({_name, %Membrane.Pad.Data{direction: :input}}, &1))
       |> Enum.map(fn {pad_ref, _pad_data} -> {:demand, {pad_ref, 1}} end)
 
     {{:ok, actions}, state}
   end
 
   @impl true
-  def handle_demand(Pad.ref(:output, ssrc), _size, _unit, ctx, state) do
+  def handle_demand(Pad.ref(:rtp, ssrc), _size, _unit, ctx, state) do
     input_pad = state.pads[ssrc]
 
     {{:ok, demand: {input_pad, &(&1 + ctx.incoming_demand)}}, state}
   end
 
   @impl true
+  def handle_demand(_pad, _size, _unit, _ctx, state) do
+    {:ok, state}
+  end
+
+  @impl true
   def handle_process(Pad.ref(:input, _id) = pad, buffer, _ctx, state) do
-    ssrc = buffer.metadata.rtp.ssrc
+    <<_::9, fmt::7, _::48, ssrc::32, _::binary>> = buffer.payload
+    output_pad = get_output_pad(buffer.payload, ssrc)
+    buffer = put_arrival_timestamp(buffer)
 
     cond do
-      new_stream?(ssrc, state.pads) ->
-        fmt = buffer.metadata.rtp.payload_type
+      is_rtcp?(buffer.payload) ->
+        {{:ok, buffer: {output_pad, buffer}, demand: {pad, &(&1 + 1)}}, state}
 
+      new_stream?(ssrc, state.pads) ->
         new_pads = state.pads |> Map.put(ssrc, pad)
 
         {{:ok, notify: {:new_rtp_stream, ssrc, fmt}, demand: {pad, &(&1 + 1)}},
@@ -100,7 +113,7 @@ defmodule Membrane.Bin.RTP.Receiver.SSRCRouter do
         {{:ok, demand: {pad, &(&1 + 1)}}, new_state}
 
       true ->
-        {{:ok, buffer: {Pad.ref(:output, ssrc), buffer}}, state}
+        {{:ok, buffer: {output_pad, buffer}}, state}
     end
   end
 
@@ -111,7 +124,25 @@ defmodule Membrane.Bin.RTP.Receiver.SSRCRouter do
     {:ok, state}
   end
 
+  defp put_arrival_timestamp(buffer),
+    # TODO put this in as a float (seconds)
+    do:
+      put_in(
+        buffer,
+        [Access.key!(:metadata), :ntp],
+        %{arrival_timestamp: Reporter.get_ntp_timestamp()}
+      )
+
   defp waiting_for_linking?(ssrc, %State{linking_buffers: lb}), do: Map.has_key?(lb, ssrc)
 
   defp new_stream?(ssrc, pads), do: not Map.has_key?(pads, ssrc)
+
+  defp get_output_pad(packet, ssrc) do
+    if is_rtcp?(packet), do: :rtcp, else: Pad.ref(:rtp, ssrc)
+  end
+
+  defp is_rtcp?(packet) do
+    <<_::8, pt::8, _::binary>> = packet
+    pt in 200..205
+  end
 end

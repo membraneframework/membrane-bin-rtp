@@ -2,10 +2,10 @@ defmodule Membrane.Bin.RTP.Receiver.SessionTest do
   use ExUnit.Case
   alias Membrane.Testing
 
-  alias Membrane.Bin.RTP.Receiver
-  alias Membrane.Element.RTP
+  alias Membrane.Bin.RTP.{PayloadType, Reporter, Receiver}
   alias Membrane.Element.RTP.H264
 
+  import Membrane.ParentSpec
   import Testing.Assertions
 
   @pcap_file "test/demo.pcap"
@@ -36,10 +36,26 @@ defmodule Membrane.Bin.RTP.Receiver.SessionTest do
     opts = %Testing.Pipeline.Options{
       elements: [
         pcap: %Membrane.Element.Pcap.Source{path: @pcap_file},
-        rtp_parser: RTP.Parser,
-        rtp: %Receiver.Session{depayloader: H264.Depayloader},
+        ssrc_router: Receiver.SSRCRouter,
+        reporter: Reporter,
+        rtp: %Receiver.Session{
+          depayloader: H264.Depayloader,
+          payload_type: %PayloadType{name: "H264", mediatype: "V", clockrate: 90000}
+        },
         video_parser: %Membrane.Element.FFmpeg.H264.Parser{framerate: {30, 1}},
         frame_counter: FrameCounter
+      ],
+      links: [
+        link(:pcap)
+        |> to(:rtp)
+        |> to(:video_parser)
+        |> to(:frame_counter),
+        link(:ssrc_router)
+        |> via_out(:rtcp)
+        |> to(:reporter)
+        |> via_out(:session)
+        |> via_in(:rtcp)
+        |> to(:rtp)
       ]
     }
 
