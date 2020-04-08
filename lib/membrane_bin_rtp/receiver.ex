@@ -26,6 +26,11 @@ defmodule Membrane.Bin.RTP.Receiver do
                 spec: (String.t() -> module()),
                 default: &__MODULE__.payload_type_to_depayloader/1,
                 description: "Mapping from payload type to a depayloader module"
+              ],
+              jitter: [
+                spec: pos_integer,
+                default: 10,
+                description: "JitterBuffer slot count"
               ]
 
   def_input_pad :input, demand_unit: :buffers, caps: :any, availability: :on_request
@@ -38,17 +43,18 @@ defmodule Membrane.Bin.RTP.Receiver do
     defstruct fmt_mapping: %{},
               ssrc_pt_mapping: %{},
               pt_to_depayloader: nil,
-              children_by_pads: %{}
+              children_by_pads: %{},
+              jitter: nil
   end
 
   @impl true
-  def handle_init(%{fmt_mapping: fmt_map, pt_to_depayloader: d_mapper}) do
+  def handle_init(%{fmt_mapping: fmt_map, pt_to_depayloader: d_mapper, jitter: jitter}) do
     children = [ssrc_router: Receiver.SSRCRouter]
     links = []
 
     spec = %ParentSpec{children: children, links: links}
 
-    {{:ok, spec: spec}, %State{fmt_mapping: fmt_map, pt_to_depayloader: d_mapper}}
+    {{:ok, spec: spec}, %State{fmt_mapping: fmt_map, pt_to_depayloader: d_mapper, jitter: jitter}}
   end
 
   @impl true
@@ -85,7 +91,10 @@ defmodule Membrane.Bin.RTP.Receiver do
       |> state.pt_to_depayloader.()
 
     rtp_session_name = {:rtp_session, make_ref()}
-    new_children = [{rtp_session_name, %Receiver.Session{depayloader: depayloader}}]
+
+    new_children = [
+      {rtp_session_name, %Receiver.Session{depayloader: depayloader, jitter: state.jitter}}
+    ]
 
     new_links = [
       link(:ssrc_router)

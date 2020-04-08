@@ -9,7 +9,7 @@ defmodule Membrane.Bin.RTP.Receiver.Session do
 
   alias Membrane.ParentSpec
 
-  def_options depayloader: [type: :module]
+  def_options depayloader: [type: :module], jitter: [type: :integer, default: 10]
 
   def_input_pad :input, demand_unit: :buffers, caps: :any
 
@@ -18,7 +18,7 @@ defmodule Membrane.Bin.RTP.Receiver.Session do
   @impl true
   def handle_init(opts) do
     children = [
-      jitter_buffer: %Membrane.Element.RTP.JitterBuffer{slot_count: 10},
+      jitter_buffer: %Membrane.Element.RTP.JitterBuffer{slot_count: opts.jitter},
       depayloader: opts.depayloader
     ]
 
