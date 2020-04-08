@@ -50,7 +50,8 @@ defmodule Membrane.Bin.RTP.MixProject do
     [
       {:membrane_core, "~> 0.5.0"},
       {:membrane_element_rtp, "~> 0.3.0"},
-      {:membrane_element_rtp_jitter_buffer, "~> 0.2.1"},
+      {:membrane_element_rtp_jitter_buffer,
+       github: "membraneframework/membrane-element-rtp-jitter-buffer"},
       {:membrane_protocol_sdp, "~> 0.1.0"},
       {:membrane_element_rtp_mpeguadio, "~> 0.3.0"},
       {:membrane_element_rtp_h264, "~> 0.2.0"},

@@ -28,9 +28,9 @@ defmodule Membrane.Bin.RTP.Receiver do
                 description: "Mapping from payload type to a depayloader module"
               ],
               jitter: [
-                spec: pos_integer,
-                default: 10,
-                description: "JitterBuffer slot count"
+                type: :time,
+                default: Membrane.Time.milliseconds(200),
+                description: "JitterBuffer latency"
               ]
 
   def_input_pad :input, demand_unit: :buffers, caps: :any, availability: :on_request
