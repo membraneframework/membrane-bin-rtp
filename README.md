@@ -1,5 +1,7 @@
 # Membrane Multimedia Framework: Membrane Bin RTP
 
+### Warning: this package is deprecated, use [membrane_rtp_plugin](https://hexdocs.pm/membrane_rtp_plugin) instead
+
 [![Hex.pm](https://img.shields.io/hexpm/v/membrane_bin_rtp.svg)](https://hex.pm/packages/membrane_bin_rtp)
 [![CircleCI](https://circleci.com/gh/membraneframework/membrane-bin-rtp.svg?style=svg)](https://circleci.com/gh/membraneframework/membrane-bin-rtp)
 
